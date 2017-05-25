@@ -1,0 +1,18 @@
+#!/bin/bash
+
+RESULTS_DIR=$(pwd)/results
+SRC_DIR=$(pwd)
+IMG_DIR=$(pwd)/img
+
+CMD=""
+if [ $# -gt 0 ]; then
+    docker run -v $RESULTS_DIR:/app/results \
+	-v $SRC_DIR:/app/ \
+	-v $IMG_DIR:/app/img \
+	--rm -it acopar/squid /bin/bash -c "$(echo $@)"
+else
+    docker run -v $RESULTS_DIR:/app/results \
+	-v $SRC_DIR:/app/ \
+	-v $IMG_DIR:/app/img \
+	--rm -it acopar/squid /bin/bash
+fi
