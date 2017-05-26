@@ -9,16 +9,16 @@ from utils import *
 RESULTS = 'results'
 
 EXPERIMENTS = [
-    #('1x1', 'cpu'),   
-    #('1x1', 'gpu'),
-    #('2x1', 'gpu'),
-    #('1x2', 'gpu'),
-    #('2x2', 'gpu'),
-    #('4x1', 'gpu'),
-    #('1x4', 'gpu'),
-    ('4x2', 'gpu'),
-    ('8x1', 'gpu'),
-    ('1x8', 'gpu'),
+    ('1x1', 'cpu'),   
+    ('1x1', 'gpu'),
+    ('2x1', 'gpu'),
+    ('1x2', 'gpu'),
+    ('2x2', 'gpu'),
+    ('4x1', 'gpu'),
+    ('1x4', 'gpu'),
+    #('4x2', 'gpu'),
+    #('8x1', 'gpu'),
+    #('1x8', 'gpu'),
 ]
 
 SPARSE_MAP = {'ArrayExpress': False, 'TCGA-BRCA': False, 
@@ -41,7 +41,7 @@ def process(cmd):
     
     return t
 
-def run_batch(dataset, blocks='1x1', context='gpu', method='nmtf_long'):
+def run_batch(dataset, blocks='1x1', context='gpu', method='nmtf_long', transfer=True):
     data_file = to_path(RESULTS, '%s.csv' % dataset)
     
     data = []
@@ -58,13 +58,19 @@ def run_batch(dataset, blocks='1x1', context='gpu', method='nmtf_long'):
     if method == 'nmtf_ding':
         orthogonal = ' -o'
     
-    cmd = 'crow%s%s%s -b %s -i %d -k1 %d %s.coo' % (sparse, g, 
-        orthogonal, blocks, MAX_ITER, FRANK, dataset)
+    tr = ''
+    if not transfer:
+        tr = ' --no-transfer'
+    cmd = 'crow%s%s%s -b %s -i %d -k1 %d%s %s.coo' % (sparse, g, 
+        orthogonal, blocks, MAX_ITER, FRANK, tr, dataset)
     t = process(cmd)
     if t == None:
         print "Warning: timing %s failed" % cmd
         return None
-    print "Dataset %s, %s, %s, time: %s" % (dataset, blocks, context, t)
+    if transfer:
+        print "Dataset %s, %s, %s, time: %s" % (dataset, blocks, context, t)
+    else:
+        print "Dataset %s, %s, %s, time: %s (communication disabled)" % (dataset, blocks, context, t)
     columns = ['method', 'context', 'blocks', 'balanced', 'time']
     data.append({'method': 'nmtf_long', 'context': context, 'balanced': 'balanced',
         'blocks': blocks, 'time': t})
@@ -76,6 +82,10 @@ def benchmark(argv, method):
     for dataset in argv:
         for block, context in EXPERIMENTS:
             run_batch(dataset, blocks=block, context=context, method=method)
+    
+    for dataset in argv:
+        for block, context in EXPERIMENTS:
+            run_batch(dataset, blocks=block, context=context, method=method, transfer=False)
 
 
 def main():
