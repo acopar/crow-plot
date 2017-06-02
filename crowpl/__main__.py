@@ -44,7 +44,17 @@ def get_configlist(use_context, use_blockconfig):
             selected_configs.append('%s %s' % (con, block))
     return selected_configs
 
-def read_wrapper(argv, method='nmtf_long', task='speedup', context='cpu', label='4', k='(20, 20)', max_iter=100):
+def context_to_context(c):
+    if c in ['gpu', 'hpu']:
+        return 'gpu'
+    return 'cpu'
+
+def context_to_sync(c):
+    if c in ['cpu', 'gpu']:
+        return True
+    return False
+
+def read_wrapper(argv, method='nmtf_long', task='speedup', context='cpu', label='4', k='20', max_iter=100):
     data_list = argv
     if len(argv) == 0:
         print 'No datasets specified'
@@ -52,22 +62,22 @@ def read_wrapper(argv, method='nmtf_long', task='speedup', context='cpu', label=
     
     block_map = {
         'ArrayExpress': {1: '1x1', 2: '2x1', 4: '4x1', 8: '8x1'},
-        'retina-dense': {1: '1x1', 2: '2x1', 4: '2x2', 8: '4x2'},
-        'cochlea-dense': {1: '1x1', 2: '2x1', 4: '2x2', 8: '4x2'},
         'TCGA-BRCA': {1: '1x1', 2: '1x2', 4: '1x4', 8: '1x8'},
         'fetus': {1: '1x1', 2: '2x1', 4: '2x2', 8: '4x2'},
         'retina': {1: '1x1', 2: '2x1', 4: '2x2', 8: '4x2'},
         'cochlea': {1: '1x1', 2: '2x1', 4: '2x2', 8: '4x2'}
     }
-    
+
     use_blockconfig = ['1x1', '2x1', '1x2', '4x1', '2x2', '1x4']
 
     selected_configs = None
     all_data = None
     
     if task == 'speedup':
-        selected_configs = ['cpu 1x1', 'gpu 1x1', 'gpu 2x1', 'gpu 1x2', 'gpu 4x1', 'gpu 2x2', 'gpu 1x4']
-        template = {'context': 'cpu', 'method': method, 'unbalanced': False, 'k': k, 'max_iter': max_iter, 'blocks': '1x1'}
+        selected_configs = ['cpu 1x1', 'gpu 1x1', 'gpu 2x1', 'gpu 1x2', 'gpu 4x1', 
+            'gpu 2x2', 'gpu 1x4']
+        template = {'context': 'cpu', 'method': method, 'balanced': 'balanced', 
+            'sync': True, 'k': k, 'max_iter': max_iter, 'blocks': '1x1'}
         configs = {key: {'context': key.split(' ')[0], 'blocks': key.split(' ')[1]} for key in selected_configs}
 
         conf_dict = {c: from_template(template, configs[c]) for c in selected_configs}
@@ -77,8 +87,11 @@ def read_wrapper(argv, method='nmtf_long', task='speedup', context='cpu', label=
         use_context = ['cpu', 'gpu', 'epu', 'hpu']
         
         selected_configs = get_configlist(use_context, use_blockconfig)
-        template = {'context': 'cpu', 'method': method, 'unbalanced': False, 'k': k, 'max_iter': max_iter, 'blocks': '1x1'}
-        configs = {key: {'context': key.split(' ')[0], 'blocks': key.split(' ')[1]} for key in selected_configs}
+        template = {'context': 'cpu', 'method': method, 'balanced': 'balanced', 
+            'sync': True, 'k': k, 'max_iter': max_iter, 'blocks': '1x1'}
+        configs = {key: {'context': context_to_context(key.split(' ')[0]), 
+            'blocks': key.split(' ')[1], 'sync': context_to_sync(key.split(' ')[0])} 
+            for key in selected_configs}
 
         conf_dict = {c: from_template(template, configs[c]) for c in selected_configs}
         all_data = read_datasets(data_list, conf_dict)
@@ -89,8 +102,10 @@ def read_wrapper(argv, method='nmtf_long', task='speedup', context='cpu', label=
             use_context = ['cpu', 'epu']
         
         selected_configs = get_configlist(use_context, use_blockconfig)
-        template = {'context': 'gpu', 'method': method, 'unbalanced': False, 'k': k, 'max_iter': max_iter, 'blocks': '1x1'}
-        configs = {key: {'context': key.split(' ')[0], 'blocks': key.split(' ')[1]} for key in selected_configs}
+        template = {'context': 'gpu', 'method': method, 'balanced': 'balanced', 
+            'sync': True, 'k': k, 'max_iter': max_iter, 'blocks': '1x1'}
+        configs = {key: {'context': context_to_context(key.split(' ')[0]), 
+            'blocks': key.split(' ')[1], 'sync': context_to_sync(key.split(' ')[0])} for key in selected_configs}
         
         conf_dict = {c: from_template(template, configs[c]) for c in selected_configs}
         all_data = read_datasets(data_list, conf_dict)
@@ -99,7 +114,8 @@ def read_wrapper(argv, method='nmtf_long', task='speedup', context='cpu', label=
             selected_configs = ['cpu 1', 'gpu 1', 'gpu 2', 'gpu 4']
         else:
             selected_configs = ['cpu 1', 'cpu 2', 'cpu 4']
-        template = {'context': 'cpu', 'method': method, 'unbalanced': False, 'k': k, 'max_iter': max_iter, 'blocks': '1x1'}
+        template = {'context': 'cpu', 'method': method, 'balanced': 'balanced', 
+            'sync': True, 'k': k, 'max_iter': max_iter, 'blocks': '1x1'}
         configs = {
             'cpu 1': {'context': 'cpu', 'blocks': '1x1'},
             'cpu 2': {'context': 'cpu', 'blocks': '2x1'},
@@ -112,29 +128,31 @@ def read_wrapper(argv, method='nmtf_long', task='speedup', context='cpu', label=
         conf_dict = {c: from_template(template, configs[c]) for c in selected_configs}
         all_data = read_datasets(data_list, conf_dict, block_map=block_map)
     elif task == 'balance':
-        selected_configs = ['balanced 2x1', 'unbalanced 2x1', 'balanced 1x2', 'unbalanced 1x2', 
-            'balanced 4x1', 'unbalanced 4x1', 'balanced 2x2', 'unbalanced 2x2', 'balanced 1x4', 'unbalanced 1x4']
+        selected_configs = ['balanced 2x1', 'imbalanced 2x1', 'balanced 1x2', 'imbalanced 1x2', 
+            'balanced 4x1', 'imbalanced 4x1', 'balanced 2x2', 'imbalanced 2x2', 'balanced 1x4', 'imbalanced 1x4']
         
-        template = {'context': context, 'method': method, 'sparse': True, 'unbalanced': False, 'k': k, 'max_iter': max_iter, 'blocks': '2x2'},
+        template = {'context': context, 'method': method, 'sparse': 'sparse', 
+            'balanced': 'balanced', 'k': k, 'max_iter': max_iter, 'blocks': '2x2'}
         configs = {
-            'balanced 4x1': {'unbalanced': False, 'blocks': '4x1'},
-            'unbalanced 4x1': {'unbalanced': True, 'blocks': '4x1'},
-            'balanced 2x2': {'unbalanced': False, 'blocks': '2x2'}, 
-            'unbalanced 2x2': {'unbalanced': True, 'blocks': '2x2'},
-            'balanced 1x4': {'unbalanced': False, 'blocks': '1x4'},
-            'unbalanced 1x4': {'unbalanced': True, 'blocks': '1x4'},
-            'balanced 2x1': {'unbalanced': False, 'blocks': '2x1'}, 
-            'unbalanced 2x1': {'unbalanced': True, 'blocks': '2x1'},
-            'balanced 1x2': {'unbalanced': False, 'blocks': '1x2'}, 
-            'unbalanced 1x2': {'unbalanced': True, 'blocks': '1x2'}
+            'balanced 4x1': {'balanced': 'imbalanced', 'blocks': '4x1'},
+            'imbalanced 4x1': {'balanced': 'balanced', 'blocks': '4x1'},
+            'balanced 2x2': {'balanced': 'imbalanced', 'blocks': '2x2'}, 
+            'imbalanced 2x2': {'balanced': 'balanced', 'blocks': '2x2'},
+            'balanced 1x4': {'balanced': 'imbalanced', 'blocks': '1x4'},
+            'imbalanced 1x4': {'balanced': 'balanced', 'blocks': '1x4'},
+            'balanced 2x1': {'balanced': 'imbalanced', 'blocks': '2x1'}, 
+            'imbalanced 2x1': {'balanced': 'balanced', 'blocks': '2x1'},
+            'balanced 1x2': {'balanced': 'imbalanced', 'blocks': '1x2'}, 
+            'imbalanced 1x2': {'balanced': 'balanced', 'blocks': '1x2'}
         }
         
         conf_dict = {c: from_template(template, configs[c]) for c in selected_configs}
         all_data = read_datasets(data_list, conf_dict)
     elif task == 'k':
-        template = {'context': context, 'method': method, 'unbalanced': False, 'max_iter': max_iter, 'blocks': '2x2'}
+        template = {'context': context, 'method': method, 'balanced': 'balanced', 
+            'max_iter': max_iter, 'blocks': '2x2'}
         selected_configs = list(range(10, 160, 10))
-        configs = {key: {'k': '(%d, %d)' % (key, key)} for key in selected_configs}
+        configs = {key: {'k': '%d' % key} for key in selected_configs}
         
         conf_dict = {c: from_template(template, configs[c]) for c in selected_configs}
         all_data = read_datasets(data_list, conf_dict, block_map=block_map)
@@ -166,6 +184,7 @@ def read_datasets(datasets, configs, block_map=None, sparse_map=None):
             h = float(d['time'])
             
             add = None
+            
             for c in configs:
                 con = configs[c]
                 con = {key: value for key, value in con.items()}
@@ -179,6 +198,7 @@ def read_datasets(datasets, configs, block_map=None, sparse_map=None):
                 #    imb = con['balanced']
                 #    if imb == True:
                 #        con['balanced'] = sparse_map[dataname]
+                #print d, con, cmp_configs(d, con)
                 if cmp_configs(d, con):
                     if add:
                         print d, con
@@ -199,8 +219,8 @@ def read_datasets(datasets, configs, block_map=None, sparse_map=None):
 def speedup_frame(data, task='best', labels={'x': 'Dataset', 'y': 'Speedup', 'z': 'Blocks'}):
     divider = None
     if task == 'balance':
-        pairs = [('unbalanced 2x1', 'balanced 2x1'), ('unbalanced 1x2', 'balanced 1x2'),
-        ('unbalanced 4x1', 'balanced 4x1'), ('unbalanced 2x2', 'balanced 2x2'), ('unbalanced 1x4', 'balanced 1x4')]
+        pairs = [('imbalanced 2x1', 'balanced 2x1'), ('imbalanced 1x2', 'balanced 1x2'),
+        ('imbalanced 4x1', 'balanced 4x1'), ('imbalanced 2x2', 'balanced 2x2'), ('imbalanced 1x4', 'balanced 1x4')]
     elif task == 'best':
         pairs = [('cpu 1', 'gpu 1'), ('cpu 1', 'gpu 2'), ('cpu 1', 'gpu 4')]
     elif task == 'best cpu':
@@ -244,7 +264,8 @@ def speedup_frame(data, task='best', labels={'x': 'Dataset', 'y': 'Speedup', 'z'
                 frame.append([key, speedup, block])
     
     if len(frame) == 0:
-        raise Exception("Missing data")
+        print "Warning: Missing data, task: %s" % task
+        return None
     
     x, y, z = labels['x'], labels['y'], labels['z']
     df = pd.DataFrame({x: [i[0] for i in frame], y: [i[1] for i in frame], z: [i[2] for i in frame]})
@@ -299,6 +320,8 @@ def bar_plot(data, img_file, label='speedup', k='20', order=None):
         labels['y'] = 'Communication overhead'
     
     df = speedup_frame(data, task=label, labels=labels)
+    if df is None:
+        return None
     df = order_frame(df, order=order)
     visualize.barplot(df, filename=img_file, labels=labels, x=labels['x'], y=labels['y'], z=labels['z'])
 
@@ -335,11 +358,13 @@ def main():
     print 'Method', method
     image_folder = to_path(IMG, method)
     k = '20'
-    max_iter = 100
+    max_iter = 10
     
     if args.action == 'benchmark':
-        p = subprocess.Popen(['python', 'benchmark.py', '-m', method], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        p.communicate() 
+        p = subprocess.Popen(['python', 'benchmark.py', '-m', method] + args, 
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p.communicate()
+    
     elif args.action == 'speedup':
         all_data = read_wrapper(argv, method=method, task='speedup', max_iter=max_iter)
         img_file = to_path(image_folder, 'speedup_%s.png' % k)
@@ -355,8 +380,9 @@ def main():
     
     elif args.action == 'balance':
         for context in ['gpu', 'cpu']:
-            k = '(%d, %d)' % (20, 20)
-            all_data = read_wrapper(argv, method=method, task='balance', context=context, max_iter=max_iter, k=k)
+            all_data = read_wrapper(argv, method=method, task='balance', 
+                context=context, max_iter=max_iter, k=k)
+            print all_data
             img_file = to_path(image_folder, 'balanced_%s.png' % context)
             bar_plot(all_data, img_file, label='balance', k='20', order=argv)
         
@@ -367,7 +393,7 @@ def main():
             line_plotter(all_data, img_file, label='%s4' % context, order=argv)
         
     elif args.action == 'efficiency':
-        for context in ['gpu', 'cpu', 'hpu', 'epu']:
+        for context in ['gpu', 'cpu']:
             all_data = read_wrapper(argv, method=method, task='efficiency', context=context, max_iter=max_iter)
             img_file = to_path(image_folder, 'efficiency_%s.png' % context)
             bar_plot(all_data, img_file, label='efficiency %s' % context, order=argv)

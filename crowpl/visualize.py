@@ -8,6 +8,7 @@ from seaborn.palettes import *
     
 from utils import *
 
+
 def order_hue(df, z='Blocks'):
     hue_set = set([])
     for i in df.index:
@@ -38,7 +39,7 @@ def standard_plot(f):
         #matplotlib.rcParams['ytick.labelsize'] = 11
         #matplotlib.rcParams['xtick.labelsize'] = 11
         
-        f(*args, **kwargs)
+        bbox = f(*args, **kwargs)
         filename = kwargs['filename']
         if 'labels' in kwargs:
             labels = kwargs['labels']
@@ -51,12 +52,15 @@ def standard_plot(f):
         
         if filename:
             ensure_dir(filename)
-            #plt.savefig(filename, bbox_inches="tight", pad_inches=0.2)
             pdf = filename.replace('.png', '.pdf')
-            print 'Matplotlib backend:', plt.get_backend()
-            plt.savefig(pdf, bbox_inches="tight", pad_inches=0.2)
-            # Commend to disable convert from pdf to png
-            subprocess.Popen(['convert', pdf, filename])
+            if bbox == 'one':
+                plt.gcf().tight_layout(rect=[0,0,0.85,1])
+                plt.savefig(pdf)
+            else:
+                plt.savefig(pdf, bbox_inches="tight", pad_inches=0.2)
+            # Comment to disable conversion from pdf to png
+            p = subprocess.Popen(['convert', pdf, filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = p.communicate()
         plt.close()
     return new_f
 
@@ -92,7 +96,7 @@ def barplot_multi(df, df2, filename=None, labels=None, x='label', y=None, z='Blo
         print "Columns:", df.columns
         raise Exception()
     
-    f, ax = plt.subplots(figsize=(16, 9))
+    f, ax = plt.subplots(figsize=(13, 9))
     horder = order_hue(df, z=z)
     palette = get_palette(len(horder), start=start, variant="deep")
     palette2 = []
@@ -107,18 +111,27 @@ def barplot_multi(df, df2, filename=None, labels=None, x='label', y=None, z='Blo
 
     hnd = handles[6:12]
     lab = labels[6:12]
-    l2 = ax.legend(hnd, lab, title="Efficiency", loc="center left", bbox_to_anchor=(1.016, 0.3))
-    l2.get_title().set_fontsize('12')
+    l2 = ax.legend(hnd, lab, title="Efficiency", loc="center left", bbox_to_anchor=(1.022, 0.3))
+    l2.get_title().set_fontsize('16')
     plt.gca().add_artist(l2)
     
     hnd = handles[:6]
     lab = labels[:6]
     l1 = ax.legend(hnd, lab, title="Communication\noverhead", loc="center left", bbox_to_anchor=(1.009, 0.7))
-    l1.get_title().set_fontsize('12')
+    l1.get_title().set_fontsize('16')
     plt.gca().add_artist(l1)
+    
+    l2.set_visible(False)
+    
+    hnd = handles[6:12]
+    lab = labels[6:12]
+    l2 = ax.legend(hnd, lab, title="Efficiency", loc="center left", bbox_to_anchor=(1.022, 0.3))
+    l2.get_title().set_fontsize('16')
+    plt.gca().add_artist(l2)
     
     ax.set(ylabel="Efficiency")
     sns.despine(left=True)
+    return "one"
 
 @standard_plot
 def lineplot(df, filename=None, labels=None, x='Dataset', y=None, z='Blocks'):
@@ -129,7 +142,6 @@ def lineplot(df, filename=None, labels=None, x='Dataset', y=None, z='Blocks'):
     
     matplotlib.rcParams['lines.linewidth'] = 1.5
     g = sns.factorplot(x=x, y=y, hue=z, data=df, size=8, legend=False, aspect=1.44)
-                   #capsize=0.01, size=7, aspect=1.0) # palette="YlGnBu_d"
     g.set(ylim=(0, None))
     labels = [i if i%20 == 0 else '' for i in range(10,150,10)]
     g.set(xticklabels=labels)
