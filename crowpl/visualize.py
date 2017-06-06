@@ -31,7 +31,6 @@ def get_palette(n_colors, start=0, variant="deep"):
 def standard_plot(f):
     def new_f(*args, **kwargs):
         sns.set_context("paper")
-        #sns.plotting_context(font_scale=10)
         sns.set(style="whitegrid", font_scale=2.0)
         matplotlib.rcParams['text.usetex'] = True
         #matplotlib.rcParams['axes.labelsize'] = 12
@@ -43,8 +42,6 @@ def standard_plot(f):
         filename = kwargs['filename']
         if 'labels' in kwargs:
             labels = kwargs['labels']
-            #if 'title' in labels:
-            #    plt.title(labels['title'])
             if 'xlabel' in labels:
                 plt.xlabel(labels['xlabel'])
             if 'ylabel' in labels:
@@ -53,7 +50,7 @@ def standard_plot(f):
         if filename:
             ensure_dir(filename)
             pdf = filename.replace('.png', '.pdf')
-            if bbox == 'one':
+            if bbox == 'bbox':
                 plt.gcf().tight_layout(rect=[0,0,0.85,1])
                 plt.savefig(pdf)
             else:
@@ -131,7 +128,7 @@ def barplot_multi(df, df2, filename=None, labels=None, x='label', y=None, z='Blo
     
     ax.set(ylabel="Efficiency")
     sns.despine(left=True)
-    return "one"
+    return "bbox"
 
 @standard_plot
 def lineplot(df, filename=None, labels=None, x='Dataset', y=None, z='Blocks'):

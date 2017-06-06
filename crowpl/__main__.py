@@ -96,7 +96,7 @@ def read_wrapper(argv, method='nmtf_long', task='speedup', context='cpu', label=
         conf_dict = {c: from_template(template, configs[c]) for c in selected_configs}
         all_data = read_datasets(data_list, conf_dict)
     
-    elif task == 'one':
+    elif task == 'transfer':
         use_context = ['gpu', 'hpu']
         if context == 'cpu':
             use_context = ['cpu', 'epu']
@@ -194,21 +194,11 @@ def read_datasets(datasets, configs, block_map=None, sparse_map=None):
                     rank = blocks2[0]*blocks2[1]
                     con['blocks'] = dataset_blocks[rank]
                 
-                #if sparse_map:
-                #    imb = con['balanced']
-                #    if imb == True:
-                #        con['balanced'] = sparse_map[dataname]
-                #print d, con, cmp_configs(d, con)
                 if cmp_configs(d, con):
-                    if add:
-                        print d, con
-                        print add
-                        #raise Exception("Multiple configurations match")
                     add = c
             
             if add:
                 if add in all_data[dataname]:
-                    print 'Warning: Multiple measurements for the same config'
                     all_data[dataname][add].append(h)
                 else:
                     all_data[dataname][add] = [h]
@@ -235,7 +225,7 @@ def speedup_frame(data, task='best', labels={'x': 'Dataset', 'y': 'Speedup', 'z'
         for blocks in ['1x1', '2x1', '1x2', '4x1', '2x2', '1x4']:
             pairs.append(('%s 1x1' % context, '%s %s' % (context, blocks)))
             divider['%s %s' % (context, blocks)] = block_to_rank(blocks)
-    if 'one' in task:
+    if 'transfer' in task:
         task_, context, stage = task.split(' ')
         if stage == 'stage2':
             if context == 'cpu':
@@ -398,11 +388,11 @@ def main():
             img_file = to_path(image_folder, 'efficiency_%s.png' % context)
             bar_plot(all_data, img_file, label='efficiency %s' % context, order=argv)
         
-    elif args.action == 'one':
+    elif args.action == 'transfer':
         for context in ['gpu', 'cpu']:
-            all_data = read_wrapper(argv, method=method, task='one', context=context, max_iter=max_iter)
-            img_file = to_path(image_folder, 'one_%s.png' % context)
-            multi_plot(all_data, img_file, label='one %s' % context, order=argv) 
+            all_data = read_wrapper(argv, method=method, task='transfer', context=context, max_iter=max_iter)
+            img_file = to_path(image_folder, 'transfer_%s.png' % context)
+            multi_plot(all_data, img_file, label='transfer %s' % context, order=argv) 
 
     else:
         print "No action selected: use -a <action> argument"
