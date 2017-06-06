@@ -278,7 +278,7 @@ def rank_frame(data):
         
         tmp = data[key]
         for k in tmp.keys():
-            for runtime in tmp[k][0]:
+            for runtime in tmp[k]:
                 frame.append([key, k, runtime])
     
     if len(frame) == 0:

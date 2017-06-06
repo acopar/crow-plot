@@ -11,19 +11,22 @@ RESULTS = 'results'
 
 EXPERIMENTS = [
     ('1x1', 'cpu'),   
-    #('2x1', 'cpu'), ('1x2', 'cpu'),
-    #('2x2', 'cpu'), ('4x1', 'cpu'), ('1x4', 'cpu'),
-    #('4x2', 'cpu'), ('8x1', 'cpu'), ('1x8', 'cpu'),
-    #('4x4', 'cpu'), ('8x2', 'cpu'), ('2x8', 'cpu'),
-    #('6x4', 'cpu'), ('4x6', 'cpu'),
     ('1x1', 'gpu'),
     ('2x1', 'gpu'), ('1x2', 'gpu'),
     ('2x2', 'gpu'), ('4x1', 'gpu'), ('1x4', 'gpu'),
     ('4x2', 'gpu'), ('8x1', 'gpu'), ('1x8', 'gpu'),
 ]
 
+CPU_EXPERIMENTS = [
+    ('2x1', 'cpu'), ('1x2', 'cpu'),
+    ('2x2', 'cpu'), ('4x1', 'cpu'), ('1x4', 'cpu'),
+    ('4x2', 'cpu'), ('8x1', 'cpu'), ('1x8', 'cpu'),
+    #('4x4', 'cpu'), ('8x2', 'cpu'), ('2x8', 'cpu'),
+    #('6x4', 'cpu'), ('4x6', 'cpu'),    
+]
+
 # Change maximum number of iterations
-MAX_ITER = 10
+MAX_ITER = 100
 
 # Rank experiment list 
 # These experiments can take a very long time, 
@@ -154,6 +157,7 @@ def main():
     parser.add_argument("-r", "--rank", action="store_true", help="Calculate for different factorization ranks")
     parser.add_argument("-f", "--force", action="store_true", help="Re-run and overwrite results")
     parser.add_argument("-u", "--update", action="store_true", help="Do not re-run if results exist")
+    parser.add_argument("-a", "--all", action="store_true", help="Include all CPU configurations")
     
     parser.add_argument('args', nargs='*', help='Other args')
     args = parser.parse_args()
@@ -168,6 +172,9 @@ def main():
     
     update = args.update
     notforce = not args.force
+
+    if args.all:
+        EXPERIMENTS += CPU_EXPERIMENTS
     
     ensure_dir(RESULTS)
     benchmark(argv, method, update=notforce, comm=args.communication, imb=args.imbalanced, rank=args.rank)
