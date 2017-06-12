@@ -332,7 +332,7 @@ def multi_plot(data, img_file, label='speedup', k='20', order=None):
 
 def main():
     parser = argparse.ArgumentParser(version='0.1', description='crow-plot')
-    parser.add_argument("-m", "--method", help="Choose between nmtf_long and nmtf_ding")
+    parser.add_argument("-o", "--orthogonal", action="store_true", help='Select orthogonal NMTF')
     parser.add_argument("-a", "--action", default='speedup', help="Pick: benchmark, speedup, k, balance, efficiency, communication")
     
     parser.add_argument('args', nargs='*', help='Other args')
@@ -343,15 +343,19 @@ def main():
         raise Exception("No datasets selected")
     
     method = 'nmtf_long'
-    if args.method:
-        method = args.method
+    if args.orthogonal:
+        method = 'nmtf_ding'
+    
     print 'Method', method
     image_folder = to_path(IMG, method)
     k = '20'
-    max_iter = 10
+    max_iter = 100
     
     if args.action == 'benchmark':
-        p = subprocess.Popen(['python', 'benchmark.py', '-m', method] + args, 
+        oargs = []
+        if args.orthogonal:
+            oargs = ['-o']
+        p = subprocess.Popen(['python', 'benchmark.py'] + oargs + args, 
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         p.communicate()
     

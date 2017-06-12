@@ -101,12 +101,12 @@ def run_batch(dataset, blocks='1x1', context='gpu', method='nmtf_long',
         'balanced': balanced, 'sync': transfer, 'time': t})
     save_csv_dict(data_file, data, columns=columns, append=True)
 
-def benchmark(argv, method, update=True, comm=False, imb=False, rank=False):
+def benchmark(argv, experiments, method, update=True, comm=False, imb=False, rank=False):
     all_data = read_datasets2(argv)
     
     for dataset in argv:
         print dataset
-        for block, context in EXPERIMENTS:
+        for block, context in experiments:
             sparse = 'dense'
             if SPARSE_MAP[dataset] == True:
                 sparse = 'sparse'
@@ -124,7 +124,7 @@ def benchmark(argv, method, update=True, comm=False, imb=False, rank=False):
     
     if imb == True:
         for dataset in argv:
-            for block, context in EXPERIMENTS:
+            for block, context in experiments:
                 sparse = 'sparse'
                 config = {'context': context, 'blocks': block, 'method': method, 'sparse': sparse, 'balanced': 'balanced'}
                 exists = compare_configs(all_data[dataset], config)
@@ -153,7 +153,7 @@ def main():
     parser = argparse.ArgumentParser(version='0.1', description='crow-plot')
     parser.add_argument("-c", "--communication", action="store_true", help="Calculate also communication overhead")
     parser.add_argument("-i", "--imbalanced", action="store_true", help="Calculate also imbalanced speedup")
-    parser.add_argument("-m", "--method", help="Choose between nmtf_long and nmtf_ding")
+    parser.add_argument("-o", "--orthogonal", action="store_true", help="Select orthogonal NMTF")
     parser.add_argument("-r", "--rank", action="store_true", help="Calculate for different factorization ranks")
     parser.add_argument("-f", "--force", action="store_true", help="Re-run and overwrite results")
     parser.add_argument("-u", "--update", action="store_true", help="Do not re-run if results exist")
@@ -167,17 +167,18 @@ def main():
         raise Exception("No datasets selected")
     
     method = 'nmtf_long'
-    if args.method:
-        method = args.method
+    if args.orthogonal:
+        method = 'nmtf_ding'
     
     update = args.update
     notforce = not args.force
 
+    experiments = EXPERIMENTS
     if args.all:
-        EXPERIMENTS += CPU_EXPERIMENTS
+        experiments = EXPERIMENTS + CPU_EXPERIMENTS
     
     ensure_dir(RESULTS)
-    benchmark(argv, method, update=notforce, comm=args.communication, imb=args.imbalanced, rank=args.rank)
+    benchmark(argv, experiments, method, update=notforce, comm=args.communication, imb=args.imbalanced, rank=args.rank)
     
 if __name__ == '__main__':
     main()
