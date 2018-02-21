@@ -38,10 +38,13 @@ RANK_EXPERIMENTS = [
     ('fetus', '2x2', 'gpu'),
     ('retina', '2x2', 'gpu'),
     ('cochlea', '2x2', 'gpu'),
+    ('TCGA-Methyl', '1x4', 'gpu')
 ]
 
 SPARSE_MAP = {'ArrayExpress': False, 'TCGA-BRCA': False, 
-    'fetus': True, 'retina': False, 'cochlea': False}
+    'fetus': True, 'retina': False, 'cochlea': False,
+    'TCGA-Methyl': False,
+}
 
 def process(cmd):
     p = subprocess.Popen(cmd.split(' '), stdin=subprocess.PIPE, 
@@ -85,7 +88,7 @@ def run_batch(dataset, blocks='1x1', context='gpu', method='nmtf_long',
     tr = ''
     if not transfer:
         tr = ' --no-transfer'
-    cmd = 'crow%s%s%s -b %s -i %d -k1 %d%s%s %s.coo' % (sp, g, 
+    cmd = 'crow%s%s%s -b %s -i %d -k1 %d%s%s %s' % (sp, g, 
         orthogonal, blocks, MAX_ITER, FRANK, tr, bl, dataset)
     t = process(cmd)
     if t == None:
@@ -105,35 +108,36 @@ def benchmark(argv, experiments, method, update=True, comm=False, imb=False, ran
     all_data = read_datasets2(argv)
     
     for dataset in argv:
-        print dataset
+        filebase = os.path.splitext(os.path.basename(dataset))[0]
         for block, context in experiments:
             sparse = 'dense'
-            if SPARSE_MAP[dataset] == True:
+            if SPARSE_MAP[filebase] == True:
                 sparse = 'sparse'
             
             config = {'context': context, 'blocks': block, 'sparse': sparse, 'method': method}
-            exists = compare_configs(all_data[dataset], config)
+            exists = compare_configs(all_data[filebase], config)
             if exists == False:
                 run_batch(dataset, blocks=block, context=context, method=method, sparse=sparse)
             
             if comm == True:
                 config = {'context': context, 'blocks': block, 'sparse': sparse, 'method': method, 'sync': False}
-                exists = compare_configs(all_data[dataset], config)
+                exists = compare_configs(all_data[filebase], config)
                 if exists == False:
                     run_batch(dataset, blocks=block, context=context, method=method, sparse=sparse, transfer=False)
     
     if imb == True:
         for dataset in argv:
+            filebase = os.path.splitext(os.path.basename(dataset))[0]
             for block, context in experiments:
                 sparse = 'sparse'
                 config = {'context': context, 'blocks': block, 'method': method, 'sparse': sparse, 'balanced': 'balanced'}
-                exists = compare_configs(all_data[dataset], config)
+                exists = compare_configs(all_data[filebase], config)
                 if exists == False:
                     run_batch(dataset, blocks=block, context=context, method=method, sparse=sparse)
                 
                 balanced = 'imbalanced'
                 config = {'context': context, 'blocks': block, 'method': method, 'sparse': sparse, 'balanced': balanced}
-                exists = compare_configs(all_data[dataset], config)
+                exists = compare_configs(all_data[filebase], config)
                 if exists == False:
                     run_batch(dataset, blocks=block, context=context, method=method, sparse=sparse, balanced=balanced)
     

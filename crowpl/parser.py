@@ -1,4 +1,4 @@
-
+import os
 from utils import *
 
 
@@ -14,7 +14,8 @@ def cmp_configs(x, y):
 def read_datasets2(datasets, RESULTS='results'):
     all_data = {}
     
-    for dataname in datasets:
+    for path in datasets:
+        dataname = os.path.splitext(os.path.basename(path))[0]
         all_data[dataname] = []
         index_file = to_path(RESULTS, '%s.csv' % dataname)
         
